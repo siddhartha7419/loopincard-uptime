@@ -1,0 +1,27 @@
+name: loopincard.com uptime
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes (GitHub may run a little late)
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Website and app respond
+        run: |
+          fail=0
+          for path in /api/health / /j/third-wave-chai; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 --retry 2 --retry-delay 15 --retry-all-errors "https://loopincard.com$path" || true)
+            echo "$path -> $code"
+            if [ "$code" != "200" ]; then echo "::error::loopincard.com$path returned $code"; fail=1; fi
+          done
+          exit $fail
+      - name: HTTPS certificate not about to expire
+        run: |
+          end=$(echo | openssl s_client -servername loopincard.com -connect loopincard.com:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+          days=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+          echo "certificate expires in $days days"
+          [ "$days" -gt 10 ] || { echo "::error::HTTPS certificate expires in $days days"; exit 1; }
